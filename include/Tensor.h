@@ -5,6 +5,7 @@
 #ifndef CS2013_TENSOR_LIBRARY_TENSOR_H
 #define CS2013_TENSOR_LIBRARY_TENSOR_H
 #include <vector>
+#include "TensorTransform.h"
 
 
 
@@ -84,7 +85,8 @@ public:
     Tensor operator*(const Tensor& other) const;
     Tensor operator*(double scalar) const;
 
-
+    //Polimorfismo
+    Tensor apply(const TensorTransform& op) const;
 
 };
 

@@ -9,4 +9,6 @@ add_executable(CS2013_Tensor_Library
         main.cpp
         src/Tensor.cpp
         include/Tensor.h
+        src/TensorTransform.cpp
+        include/TensorTransform.h
 )

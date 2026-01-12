@@ -767,3 +767,19 @@ Tensor matmul(const Tensor& a, const Tensor& b) {
     }
     return out;
 }
+
+Tensor Tensor::apply(const TensorTransform& op) const {
+    Tensor out;
+    out.shape_ = shape_;
+    out.size_ = size_;
+    out.compute_strides();
+    if (out.size_ == 0) {
+        out.data_ = nullptr;
+        return out;
+    }
+    out.data_ = new double[out.size_];
+    for (std::size_t i = 0; i < out.size_; ++i) {
+        out.data_[i] = op.apply(data_[i]);
+    }
+    return out;
+}

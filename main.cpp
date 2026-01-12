@@ -15,34 +15,100 @@ static std::vector<std::size_t> shape2(std::size_t a, std::size_t b) {
     return s;
 }
 
-int main() {
-    // ----- VIEW -----
-    Tensor A = Tensor::arange(0, 12);
-
+static std::vector<std::size_t> shape3(std::size_t a, std::size_t b, std::size_t c) {
     std::vector<std::size_t> s;
-    s.push_back(3);
-    s.push_back(4);
+    s.push_back(a);
+    s.push_back(b);
+    s.push_back(c);
+    return s;
+}
 
-    Tensor B = A.view(s);
+static void print_shape(const Tensor& t, const char* name) {
+    std::cout << name << " shape: (";
+    const std::vector<std::size_t>& sh = t.shape();
+    for (std::size_t i = 0; i < sh.size(); ++i) {
+        std::cout << sh[i];
+        if (i + 1 < sh.size()) std::cout << ", ";
+    }
+    std::cout << ")\n";
+}
 
-    std::cout << "B = view(3x4) de arange(0,12):\n";
-    B.imprimir();
+static void print_row_prefix(const Tensor& t, std::size_t row, std::size_t k, const char* name) {
+    std::cout << name << " row " << row << " first " << k << " values: ";
+    for (std::size_t j = 0; j < k; ++j) {
+        std::cout << t.at(row, j) << " ";
+    }
+    std::cout << "\n";
+}
 
-    // A quedó válido pero vacío (por move)
-    std::cout << "A numel despues de view (deberia ser 0): " << A.numel() << "\n";
+int main() {
+    std::srand(0);
 
-    // ----- UNSQUEEZE -----
-    Tensor C = Tensor::arange(0, 3); // [0,1,2]
+    ReLU relu;
+    Sigmoid sigmoid;
 
-    Tensor D = C.unsqueeze(0); // {1,3}
-    std::cout << "D = C.unsqueeze(0) (shape deberia ser 1x3):\n";
-    D.imprimir();
-    std::cout << "C numel despues de unsqueeze (deberia ser 0): " << C.numel() << "\n";
+    //
+    // PASO 1 Crear un tensor de entrada de dimensiones 1000 × 20 × 20.
+    //
 
-    Tensor E = Tensor::arange(0, 3);
-    Tensor F = E.unsqueeze(1); // {3,1}
-    std::cout << "F = E.unsqueeze(1) (shape deberia ser 3x1):\n";
-    F.imprimir();
+    Tensor X = Tensor::random(shape3(1000, 20, 20), 1, 20);
+
+    //
+    // PASO 2Transformarlo a 1000 ×400 usando view.
+    //
+
+    X = X.view(shape2(1000, 400));
+
+    //
+    // PASO 3 Multiplicarlo por una matriz 400 x 100
+    //
+
+    Tensor W1 = Tensor::random(shape2(400, 100), -0.5, 0.5);
+
+    Tensor Z1 = matmul(X, W1);
+
+    //
+    //PASO 4 Sumar una matriz 1 x 100
+    //
+    Tensor b1 = Tensor::random(shape2(1, 100), -0.1, 0.1);
+
+    Tensor Z1b = Z1 + b1;
+
+    //
+    // PASO 5 Aplicar la función ReLU.
+    //
+    Tensor A1 = Z1b.apply(relu);
+
+    //
+    // PASO 6 Multiplicar por una matriz 100 ×10
+    //
+
+    Tensor W2 = Tensor::random(shape2(100, 10), -0.5, 0.5);
+    Tensor Z2 = matmul(A1, W2);
+
+    //
+    // PASO 7 Suma con bias b2 (1 ×10)
+    //
+    Tensor b2 = Tensor::random(shape2(1, 10), -0.1, 0.1);
+    Tensor Z2b = Z2 + b2;
+
+    //
+    // PASO 8 Activación Sigmoid
+    //
+    Tensor Y = Z2b.apply(sigmoid);
+
+    print_shape(X,  "X (flattened)");
+    print_shape(W1, "W1");
+    print_shape(b1, "b1");
+    print_shape(A1, "A1 (after ReLU)");
+    print_shape(W2, "W2");
+    print_shape(b2, "b2");
+    print_shape(Y,  "Y (output)");
+
+    print_row_prefix(Y, 0, 10, "Y");
 
     return 0;
+
 }
+
+
