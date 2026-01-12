@@ -6,19 +6,18 @@
 #define CS2013_TENSOR_LIBRARY_TENSOR_H
 #include <vector>
 #include <cstddef>
-#include <cstddef>
-#include <iostream>
+#include <stdexcept>
 
 class Tensor {
 
     std::vector<std::size_t> shape_;
     std::vector<std::size_t> strides_;
     std::size_t size_ = 0;
-    double* data = nullptr;
+    double* data_ = nullptr;
 
     static std::size_t product(const std::vector<std::size_t>& shape);
-    void compute_strides();
     void validate_shape_or_throw(const std::vector<std::size_t>& shape)const;
+    void compute_strides();
 
 
     std::size_t offset(std::size_t i) const;
@@ -26,32 +25,18 @@ class Tensor {
     std::size_t offset(std::size_t i, std::size_t j, std::size_t k) const;
 
 
-    size_t total_size;
-    double* data_=nullptr;
-
 public:
     //
     //Constructores
     //
+    Tensor();
     Tensor(const std::vector<std::size_t>& shape_, const std::vector<double>& values);
     Tensor(const Tensor& other);
     Tensor(Tensor&& other) noexcept;
-
-    //
-    //Destructor
-    //
-    ~Tensor();
-
-    //
-    //Sobrecargas
-    //
-
     Tensor& operator=(const Tensor& other);
     Tensor& operator=(Tensor&& other) noexcept;
+    ~Tensor();
 
-    //
-    //Metodos
-    //
 
     const std::vector<std::size_t>& shape() const {return shape_;}
     std::size_t dims() const {return shape_.size();}
@@ -66,6 +51,11 @@ public:
     const double& at(std::size_t i, std::size_t j, std::size_t k) const;
 
     void imprimir() const;
+
+    static Tensor zeros (const std::vector<std::size_t>& shape);
+    static Tensor ones  (const std::vector<std::size_t>& shape);
+    static Tensor random(const std::vector<std::size_t>& shape, double min, double max);
+    static Tensor arange(long long start, long long end);
 };
 
 

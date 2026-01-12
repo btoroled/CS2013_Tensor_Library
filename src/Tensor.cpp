@@ -3,7 +3,14 @@
 //
 
 #include "../include/Tensor.h"
-#include <algorithm>
+#include <iostream>
+#include <utility>
+#include <cstdlib>
+
+//
+//Constructor VACIO
+//
+Tensor::Tensor() : shape_(), strides_(), size_(0), data_(nullptr) {}
 
 //
 //PRODuCTO DE VECTORES
@@ -55,7 +62,6 @@ Tensor::Tensor(const std::vector<std::size_t>& shape, const std::vector<double>&
     std::copy(values.begin(), values.end(), data_);
 }
 
-
 //
 // DESTRUCTOR
 //
@@ -64,14 +70,24 @@ Tensor::~Tensor() {
     delete[] data_;
 }
 
+//
+//CONSTRUCTOR DE COPIA
+//
+
 Tensor::Tensor(const Tensor& other)
     : shape_(other.shape_),
       strides_(other.strides_),
-      size_(other.size_) {
+      size_(other.size_),
+      data_(nullptr) {
 
-    data_ = new double[size_];
-    std::copy(other.data_, other.data_ + size_, data_);
+    if (size_ > 0) {
+        data_ = new double[size_];
+        for (std::size_t i = 0; i < size_; ++i) {
+            data_[i] = other.data_[i];
+        }
+    }
 }
+
 
 Tensor& Tensor::operator=(const Tensor& other) {
     if (this == &other) return *this;
@@ -82,9 +98,13 @@ Tensor& Tensor::operator=(const Tensor& other) {
     strides_ = other.strides_;
     size_ = other.size_;
 
-    data_ = new double[size_];
-    std::copy(other.data_, other.data_ + size_, data_);
-
+    data_ = nullptr;
+    if (size_ > 0) {
+        data_ = new double[size_];
+        for (std::size_t i = 0; i < size_; ++i) {
+            data_[i] = other.data_[i];
+        }
+    }
     return *this;
 }
 
@@ -166,6 +186,75 @@ const double& Tensor::at(std::size_t i, std::size_t j) const {
 
 const double& Tensor::at(std::size_t i, std::size_t j, std::size_t k) const {
     return data_[offset(i, j, k)];
+}
+
+
+//
+//MATRICES AUTOMATICAS
+//
+
+Tensor Tensor::zeros(const std::vector<std::size_t>& shape) {
+
+    Tensor t;
+    t.validate_shape_or_throw(shape);
+    t.shape_ = shape;
+    t.size_ = product(shape);
+    t.compute_strides();
+
+    t.data_ = new double[t.size_];
+    for (std::size_t i = 0; i < t.size_; ++i) t.data_[i] = 0.0;
+
+    return t;
+}
+
+Tensor Tensor::ones(const std::vector<std::size_t> &shape) {
+
+    Tensor t;
+    t.validate_shape_or_throw(shape);
+    t.shape_ = shape;
+    t.size_ = product(shape);
+    t.compute_strides();
+
+    t.data_ = new double [t.size_];
+    for (std::size_t i= 0; i < t.size_; i++) t.data_[i] = 1;
+
+    return t;
+}
+
+Tensor Tensor::random(const std::vector<std::size_t> &shape, double min, double max) {
+    if (!(min<max))
+        throw std::invalid_argument("Tensor::random: min debe ser < max");
+    Tensor t;
+    t.validate_shape_or_throw(shape);
+    t.shape_ = shape;
+    t.size_ = product(shape);
+    t.compute_strides();
+
+    t.data_ = new double[t.size_];
+    for (std::size_t i= 0; i < t.size_;i++) {
+        double u = (double)rand() / (double)RAND_MAX;
+        t.data_[i] = min + (max -min) * u;
+    }
+
+    return t;
+}
+
+Tensor Tensor::arange(long long start, long long end) {
+    if (end <= start)
+        throw std::invalid_argument("Tensor::arange: end debe ser > start.");
+
+    std::size_t n =(std::size_t)(end-start);
+    Tensor t;
+    t.shape_ = { n };
+    t.validate_shape_or_throw(t.shape_);
+    t.size_ = n;
+    t.compute_strides();
+
+    t.data_ = new double[n];
+    for (std::size_t i = 0; i < n; ++i) {
+        t.data_[i] = (double)(start + (long long)i);
+    }
+    return t;
 }
 
 
