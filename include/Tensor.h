@@ -68,6 +68,12 @@ public:
 
     static Tensor concat(const std::vector<Tensor>& tensors, std::size_t dim);
 
+    //
+    //Friends
+    //
+
+    friend Tensor dot(const Tensor& a, const Tensor& b);
+    friend Tensor matmul(const Tensor& a, const Tensor& b);
 
     //
     //Sobrecarga de operadores
@@ -77,6 +83,7 @@ public:
     Tensor operator-(const Tensor& other) const;
     Tensor operator*(const Tensor& other) const;
     Tensor operator*(double scalar) const;
+
 
 
 };

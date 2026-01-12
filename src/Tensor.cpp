@@ -711,3 +711,59 @@ Tensor Tensor::concat(const std::vector<Tensor> &tensors, std::size_t dim) {
     return out;
 }
 
+Tensor dot(const Tensor& a, const Tensor& b) {
+    if (a.dims() != b.dims()) {
+        throw std::invalid_argument("dot: dims incompatibles");
+    }
+    if (a.shape_ != b.shape_) {
+        throw std::invalid_argument("dot: shapes incompatibles (deben ser iguales)");
+    }
+    double acc = 0.0;
+    for (std::size_t i = 0; i < a.size_; ++i) {
+        acc += a.data_[i] * b.data_[i];
+    }
+    std::vector<std::size_t> s;
+    s.push_back(1);
+    std::vector<double> v;
+    v.push_back(acc);
+    Tensor out(s, v);
+    return out;
+}
+
+Tensor matmul(const Tensor& a, const Tensor& b) {
+    if (a.dims() != 2 || b.dims() != 2) {
+        throw std::invalid_argument("matmul: ambos tensores deben ser 2D");
+    }
+    std::size_t m = a.shape_[0];
+    std::size_t k = a.shape_[1];
+    std::size_t kb = b.shape_[0];
+    std::size_t n = b.shape_[1];
+    if (k != kb) {
+        throw std::invalid_argument("matmul: shapes incompatibles (a.cols debe ser = b.rows)");
+    }
+    std::vector<std::size_t> out_shape;
+    out_shape.push_back(m);
+    out_shape.push_back(n);
+
+    Tensor out;
+    out.validate_shape_or_throw(out_shape);
+    out.shape_ = out_shape;
+    out.size_ = Tensor::product(out_shape);
+    out.compute_strides();
+    out.data_ = new double[out.size_];
+
+    for (std::size_t i = 0; i < out.size_; ++i) out.data_[i] = 0.0;
+    for (std::size_t i = 0; i < m; ++i) {
+        for (std::size_t j = 0; j < n; ++j) {
+            double sum = 0.0;
+            for (std::size_t t = 0; t < k; ++t) {
+                std::size_t oa = i * a.strides_[0] + t * a.strides_[1];
+                std::size_t ob = t * b.strides_[0] + j * b.strides_[1];
+                sum += a.data_[oa] * b.data_[ob];
+            }
+            std::size_t oo = i * out.strides_[0] + j * out.strides_[1];
+            out.data_[oo] = sum;
+        }
+    }
+    return out;
+}
