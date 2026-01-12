@@ -5,8 +5,8 @@
 #ifndef CS2013_TENSOR_LIBRARY_TENSOR_H
 #define CS2013_TENSOR_LIBRARY_TENSOR_H
 #include <vector>
-#include <cstddef>
-#include <stdexcept>
+
+
 
 class Tensor {
 
@@ -24,10 +24,13 @@ class Tensor {
     std::size_t offset(std::size_t i, std::size_t j) const;
     std::size_t offset(std::size_t i, std::size_t j, std::size_t k) const;
 
+    static std::vector<std::size_t> broadcast_shape_or_throw(
+    const std::vector<std::size_t>& a,
+    const std::vector<std::size_t>& b );
 
 public:
     //
-    //Constructores
+    //CONSTRUCTORES
     //
     Tensor();
     Tensor(const std::vector<std::size_t>& shape_, const std::vector<double>& values);
@@ -50,12 +53,25 @@ public:
     const double& at(std::size_t i, std::size_t j) const;
     const double& at(std::size_t i, std::size_t j, std::size_t k) const;
 
+    //
+    //METODOS
+    //
     void imprimir() const;
 
     static Tensor zeros (const std::vector<std::size_t>& shape);
     static Tensor ones  (const std::vector<std::size_t>& shape);
     static Tensor random(const std::vector<std::size_t>& shape, double min, double max);
     static Tensor arange(long long start, long long end);
+
+    //
+    //Sobrecarga de operadores
+    //
+
+    Tensor operator+(const Tensor& other) const;
+    Tensor operator-(const Tensor& other) const;
+    Tensor operator*(const Tensor& other) const;
+    Tensor operator*(double scalar) const;
+
 };
 
 

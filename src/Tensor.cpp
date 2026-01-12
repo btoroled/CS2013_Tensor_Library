@@ -6,6 +6,8 @@
 #include <iostream>
 #include <utility>
 #include <cstdlib>
+#include <stdexcept>
+
 
 //
 //Constructor VACIO
@@ -27,9 +29,9 @@ std::size_t Tensor::product(const std::vector<std::size_t> &shape) {
 //
 void Tensor::validate_shape_or_throw(const std::vector<std::size_t> &shape) const {
     if (shape.empty() || shape.size() > 3)
-        throw std::invalid_argument("Tensor: shape must have 1 to 3 dimensions");
+        throw std::invalid_argument("Tensor: shape tiene que tener de 1 a 3 dimensiones");
     for (std::size_t d :shape) {
-        if (d==0) throw std::invalid_argument("Tensor: shape dimensions must be 0 < x < 3 ");
+        if (d==0) throw std::invalid_argument("Tensor: Las dimensiones de shape deben ser mayores a 0 < x y menores que x<3");
     }
 }
 
@@ -44,7 +46,6 @@ void Tensor::compute_strides() {
 //
 //CONSTRUCTOR PRINCIPAL
 //
-
 
 Tensor::Tensor(const std::vector<std::size_t>& shape, const std::vector<double>& values)
     : shape_(shape) {
@@ -260,6 +261,227 @@ Tensor Tensor::arange(long long start, long long end) {
     return t;
 }
 
+//
+//IMPLEMENTACION DE SOBRE CARGA
+//
+
+std::vector<std::size_t> Tensor::broadcast_shape_or_throw(const std::vector<std::size_t> &a, const std::vector<std::size_t> &b) {
+
+    if (a.size() != b.size())
+        throw std::invalid_argument("Tensor: dimensiones incompatibles(diferente cantidad de dimensiones)");
+
+    std::vector<std::size_t> out;
+    out.reserve(a.size());
+
+    for (std::size_t d =0; d < a.size(); d++) {
+        const std::size_t ad = a[d];
+        const std::size_t bd = b[d];
+
+        if (ad==bd)
+            out.push_back(ad);
+        else if (ad==1)
+            out.push_back(bd);
+        else if (bd==1)
+            out.push_back(ad);
+        else
+            throw std::invalid_argument("Tensor: shape incompatible para broadcast");
+    }
+    return out;
+}
+
+Tensor Tensor::operator*(double scalar) const {
+    Tensor r;
+    r.shape_ = shape_;
+    r.strides_ = strides_;
+    r.size_ = size_;
+
+    if (r.size_>0) {
+        r.data_ = new double[r.size_];
+        for (std::size_t i=0; i < r.size_; i++)
+            r.data_[i]=data_[i] *scalar;
+    }
+    return r;
+}
+
+Tensor Tensor::operator+(const Tensor &other) const {
+    std::vector<std::size_t> out_shape = broadcast_shape_or_throw(shape_, other.shape_);
+    Tensor r;
+    r.validate_shape_or_throw(out_shape);
+    r.shape_ = out_shape;
+    r.size_ = product(out_shape);
+    r.compute_strides();
+    r.data_ = new double [r.size_];
+
+    if (dims()==1) {
+        for (std::size_t i= 0; i < out_shape[0]; i++) {
+            std::size_t ia = (shape_[0] == 1 ? 0 : i);
+            std::size_t ib = (other.shape_[0]== 1 ? 0 : i);
+            r.data_[i]= data_[ia] + other.data_[ib];
+        }
+        return r;
+    }
+
+    if (dims()==2) {
+        const std::size_t R = out_shape[0], C = out_shape[1];
+        for (std::size_t i = 0; i < R; i++) {
+            std::size_t ia = (shape_[0] == 1 ? 0 : i);
+            std::size_t ib = (other.shape_[0]== 1 ? 0 : i);
+            for (std::size_t j=0; j < C; j++) {
+                std::size_t ja = (shape_[1] == 1 ? 0 : j);
+                std::size_t jb = (other.shape_[1] == 1 ? 0 : j);
+
+                std::size_t oa  = ia *strides_[0] + ja * strides_[1];
+                std::size_t ob = ib * other.strides_[0]+jb *other.strides_[1];
+                std::size_t orr = i * r.strides_[0] +j *r.strides_[1];
+
+                r.data_[orr] = data_[oa] + other.data_[ob];
+            }
+        }
+        return r;
+    }
+
+    const std::size_t A = out_shape[0], B = out_shape[1], C = out_shape[2];
+    for (std::size_t i = 0; i < A; ++i) {
+        std::size_t ia = (shape_[0] == 1 ? 0 : i);
+        std::size_t ib = (other.shape_[0] == 1 ? 0 : i);
+        for (std::size_t j = 0; j < B; ++j) {
+            std::size_t ja = (shape_[1] == 1 ? 0 : j);
+            std::size_t jb = (other.shape_[1] == 1 ? 0 : j);
+            for (std::size_t k = 0; k < C; ++k) {
+                std::size_t ka = (shape_[2] == 1 ? 0 : k);
+                std::size_t kb = (other.shape_[2] == 1 ? 0 : k);
+
+                std::size_t oa = ia * strides_[0] + ja * strides_[1] + ka * strides_[2];
+                std::size_t ob = ib * other.strides_[0] + jb * other.strides_[1] + kb * other.strides_[2];
+                std::size_t orr = i * r.strides_[0] + j * r.strides_[1] + k * r.strides_[2];
+
+                r.data_[orr] = data_[oa] + other.data_[ob];
+            }
+        }
+    }
+    return r;
+}
+
+Tensor Tensor::operator-(const Tensor &other) const {
+    std::vector<std::size_t> out_shape = broadcast_shape_or_throw(shape_, other.shape_);
+
+    Tensor r;
+    r.validate_shape_or_throw(out_shape);
+    r.shape_ = out_shape;
+    r.size_ = product(out_shape);
+    r.compute_strides();
+    r.data_ = new double[r.size_];
+
+    if (dims() == 1) {
+        for (std::size_t i = 0; i < out_shape[0]; ++i) {
+            std::size_t ia = (shape_[0] == 1 ? 0 : i);
+            std::size_t ib = (other.shape_[0] == 1 ? 0 : i);
+            r.data_[i] = data_[ia] - other.data_[ib];
+        }
+        return r;
+    }
+
+    if (dims() == 2) {
+        const std::size_t R = out_shape[0], C = out_shape[1];
+        for (std::size_t i = 0; i < R; ++i) {
+            std::size_t ia = (shape_[0] == 1 ? 0 : i);
+            std::size_t ib = (other.shape_[0] == 1 ? 0 : i);
+            for (std::size_t j = 0; j < C; ++j) {
+                std::size_t ja = (shape_[1] == 1 ? 0 : j);
+                std::size_t jb = (other.shape_[1] == 1 ? 0 : j);
+
+                std::size_t oa = ia * strides_[0] + ja * strides_[1];
+                std::size_t ob = ib * other.strides_[0] + jb * other.strides_[1];
+                std::size_t orr = i * r.strides_[0] + j * r.strides_[1];
+
+                r.data_[orr] = data_[oa] - other.data_[ob];
+            }
+        }
+        return r;
+    }
+
+    const std::size_t A = out_shape[0], B = out_shape[1], C = out_shape[2];
+    for (std::size_t i = 0; i < A; ++i) {
+        std::size_t ia = (shape_[0] == 1 ? 0 : i);
+        std::size_t ib = (other.shape_[0] == 1 ? 0 : i);
+        for (std::size_t j = 0; j < B; ++j) {
+            std::size_t ja = (shape_[1] == 1 ? 0 : j);
+            std::size_t jb = (other.shape_[1] == 1 ? 0 : j);
+            for (std::size_t k = 0; k < C; ++k) {
+                std::size_t ka = (shape_[2] == 1 ? 0 : k);
+                std::size_t kb = (other.shape_[2] == 1 ? 0 : k);
+
+                std::size_t oa = ia * strides_[0] + ja * strides_[1] + ka * strides_[2];
+                std::size_t ob = ib * other.strides_[0] + jb * other.strides_[1] + kb * other.strides_[2];
+                std::size_t orr = i * r.strides_[0] + j * r.strides_[1] + k * r.strides_[2];
+
+                r.data_[orr] = data_[oa] - other.data_[ob];
+            }
+        }
+    }
+    return r;
+}
+
+Tensor Tensor::operator*(const Tensor& other) const {
+    std::vector<std::size_t> out_shape = broadcast_shape_or_throw(shape_, other.shape_);
+
+    Tensor r;
+    r.validate_shape_or_throw(out_shape);
+    r.shape_ = out_shape;
+    r.size_ = product(out_shape);
+    r.compute_strides();
+    r.data_ = new double[r.size_];
+
+    if (dims() == 1) {
+        for (std::size_t i = 0; i < out_shape[0]; ++i) {
+            std::size_t ia = (shape_[0] == 1 ? 0 : i);
+            std::size_t ib = (other.shape_[0] == 1 ? 0 : i);
+            r.data_[i] = data_[ia] * other.data_[ib];
+        }
+        return r;
+    }
+
+    if (dims() == 2) {
+        const std::size_t R = out_shape[0], C = out_shape[1];
+        for (std::size_t i = 0; i < R; ++i) {
+            std::size_t ia = (shape_[0] == 1 ? 0 : i);
+            std::size_t ib = (other.shape_[0] == 1 ? 0 : i);
+            for (std::size_t j = 0; j < C; ++j) {
+                std::size_t ja = (shape_[1] == 1 ? 0 : j);
+                std::size_t jb = (other.shape_[1] == 1 ? 0 : j);
+
+                std::size_t oa = ia * strides_[0] + ja * strides_[1];
+                std::size_t ob = ib * other.strides_[0] + jb * other.strides_[1];
+                std::size_t orr = i * r.strides_[0] + j * r.strides_[1];
+
+                r.data_[orr] = data_[oa] * other.data_[ob];
+            }
+        }
+        return r;
+    }
+
+    const std::size_t A = out_shape[0], B = out_shape[1], C = out_shape[2];
+    for (std::size_t i = 0; i < A; ++i) {
+        std::size_t ia = (shape_[0] == 1 ? 0 : i);
+        std::size_t ib = (other.shape_[0] == 1 ? 0 : i);
+        for (std::size_t j = 0; j < B; ++j) {
+            std::size_t ja = (shape_[1] == 1 ? 0 : j);
+            std::size_t jb = (other.shape_[1] == 1 ? 0 : j);
+            for (std::size_t k = 0; k < C; ++k) {
+                std::size_t ka = (shape_[2] == 1 ? 0 : k);
+                std::size_t kb = (other.shape_[2] == 1 ? 0 : k);
+
+                std::size_t oa = ia * strides_[0] + ja * strides_[1] + ka * strides_[2];
+                std::size_t ob = ib * other.strides_[0] + jb * other.strides_[1] + kb * other.strides_[2];
+                std::size_t orr = i * r.strides_[0] + j * r.strides_[1] + k * r.strides_[2];
+
+                r.data_[orr] = data_[oa] * other.data_[ob];
+            }
+        }
+    }
+    return r;
+}
+
 
 //
 //Impresion de TENSORES
@@ -290,4 +512,7 @@ void Tensor::imprimir() const {
             std::cout << "\n";
         }
     }
+
+
+
 }
