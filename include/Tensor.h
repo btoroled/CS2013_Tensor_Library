@@ -66,6 +66,9 @@ public:
     Tensor view(const std::vector<std::size_t>& new_shape);
     Tensor unsqueeze(std::size_t dim);
 
+    static Tensor concat(const std::vector<Tensor>& tensors, std::size_t dim);
+
+
     //
     //Sobrecarga de operadores
     //

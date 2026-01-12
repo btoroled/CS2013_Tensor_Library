@@ -568,3 +568,146 @@ Tensor Tensor::unsqueeze(std::size_t dim) {
 
     return out;
 }
+
+Tensor Tensor::concat(const std::vector<Tensor> &tensors, std::size_t dim) {
+    if (tensors.empty()) {
+        throw std::invalid_argument("Tensor::concat: tensors is empty");
+    }
+
+    const std::size_t base_dims = tensors[0].dims();
+    if (base_dims == 0 || base_dims > 3) {
+        throw std::invalid_argument("Tensor::concat: invalid base tensor dims");
+    }
+    if (dim >= base_dims) {
+        throw std::invalid_argument("Tensor::concat: dim out of range");
+    }
+
+    std::vector<std::size_t> out_shape = tensors[0].shape_;
+    std::size_t sum_dim = 0;
+
+    for (std::size_t t = 0; t < tensors.size(); ++t) {
+        const Tensor& X = tensors[t];
+
+        if (X.dims() != base_dims) {
+            throw std::invalid_argument("Tensor::concat: all tensors must have same dims");
+        }
+
+        for (std::size_t d = 0; d < base_dims; ++d) {
+            if (d == dim) continue;
+            if (X.shape_[d] != out_shape[d]) {
+                throw std::invalid_argument("Tensor::concat: shape mismatch in non-concat dimension");
+            }
+        }
+
+        sum_dim += X.shape_[dim];
+    }
+
+    out_shape[dim] = sum_dim;
+
+    Tensor out;
+    out.validate_shape_or_throw(out_shape);
+    out.shape_ = out_shape;
+    out.size_ = product(out_shape);
+    out.compute_strides();
+    out.data_ = new double[out.size_];
+
+    const std::size_t D = base_dims;
+
+    if (D == 1) {
+        std::size_t dst = 0;
+        for (std::size_t t = 0; t < tensors.size(); ++t) {
+            const Tensor& X = tensors[t];
+            for (std::size_t i = 0; i < X.size_; ++i) {
+                out.data_[dst++] = X.data_[i];
+            }
+        }
+        return out;
+    }
+
+    if (D == 2) {
+        const std::size_t R = out.shape_[0];
+        if (dim == 0) {
+            std::size_t dst = 0;
+            for (std::size_t t = 0; t < tensors.size(); ++t) {
+                const Tensor& X = tensors[t];
+                for (std::size_t i = 0; i < X.size_; ++i) {
+                    out.data_[dst++] = X.data_[i];
+                }
+            }
+            return out;
+        }
+
+        const std::size_t C_out = out.shape_[1];
+        (void)C_out;
+
+        for (std::size_t r = 0; r < R; ++r) {
+            std::size_t dst_col = 0;
+            const std::size_t out_row_base = r * out.strides_[0];
+
+            for (std::size_t t = 0; t < tensors.size(); ++t) {
+                const Tensor& X = tensors[t];
+                const std::size_t X_cols = X.shape_[1];
+                const std::size_t x_row_base = r * X.strides_[0];
+
+                for (std::size_t c = 0; c < X_cols; ++c) {
+                    out.data_[out_row_base + dst_col + c] = X.data_[x_row_base + c];
+                }
+                dst_col += X_cols;
+            }
+        }
+        return out;
+    }
+
+    const std::size_t A = out.shape_[0];
+    const std::size_t B = out.shape_[1];
+    const std::size_t C = out.shape_[2];
+
+    if (dim == 0) {
+        std::size_t dst = 0;
+        for (std::size_t t = 0; t < tensors.size(); ++t) {
+            const Tensor& X = tensors[t];
+            for (std::size_t i = 0; i < X.size_; ++i) {
+                out.data_[dst++] = X.data_[i];
+            }
+        }
+        return out;
+    }
+
+    if (dim == 1) {
+        for (std::size_t i = 0; i < A; ++i) {
+            std::size_t dst_j = 0;
+            for (std::size_t t = 0; t < tensors.size(); ++t) {
+                const Tensor& X = tensors[t];
+                const std::size_t Bj = X.shape_[1];
+                for (std::size_t j = 0; j < Bj; ++j) {
+                    for (std::size_t k = 0; k < C; ++k) {
+                        std::size_t out_off = i * out.strides_[0] + (dst_j + j) * out.strides_[1] + k * out.strides_[2];
+                        std::size_t x_off   = i * X.strides_[0]   + j * X.strides_[1]           + k * X.strides_[2];
+                        out.data_[out_off] = X.data_[x_off];
+                    }
+                }
+                dst_j += Bj;
+            }
+        }
+        return out;
+    }
+
+    for (std::size_t i = 0; i < A; ++i) {
+        for (std::size_t j = 0; j < B; ++j) {
+            std::size_t dst_k = 0;
+            for (std::size_t t = 0; t < tensors.size(); ++t) {
+                const Tensor& X = tensors[t];
+                const std::size_t Ck = X.shape_[2];
+                for (std::size_t k = 0; k < Ck; ++k) {
+                    std::size_t out_off = i * out.strides_[0] + j * out.strides_[1] + (dst_k + k) * out.strides_[2];
+                    std::size_t x_off   = i * X.strides_[0]   + j * X.strides_[1]   + k * X.strides_[2];
+                    out.data_[out_off] = X.data_[x_off];
+                }
+                dst_k += Ck;
+            }
+        }
+    }
+
+    return out;
+}
+
