@@ -7,4 +7,6 @@ include_directories(.)
 
 add_executable(CS2013_Tensor_Library
         main.cpp
-        main.h)
+        src/Tensor.cpp
+        include/Tensor.h
+)

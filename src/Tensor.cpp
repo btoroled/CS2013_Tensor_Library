@@ -1,0 +1,201 @@
+//
+// Created by Benjamin Toro Leddihn on 8/01/26.
+//
+
+#include "../include/Tensor.h"
+#include <algorithm>
+
+//
+//PRODuCTO DE VECTORES
+//
+
+std::size_t Tensor::product(const std::vector<std::size_t> &shape) {
+    std::size_t p=1;
+    for (std::size_t x :shape) p*=x;
+    return p;
+}
+
+//
+//VALIDACION DEl VECTOR
+//
+void Tensor::validate_shape_or_throw(const std::vector<std::size_t> &shape) const {
+    if (shape.empty() || shape.size() > 3)
+        throw std::invalid_argument("Tensor: shape must have 1 to 3 dimensions");
+    for (std::size_t d :shape) {
+        if (d==0) throw std::invalid_argument("Tensor: shape dimensions must be 0 < x < 3 ");
+    }
+}
+
+void Tensor::compute_strides() {
+    strides_.assign(shape_.size(), 1);
+
+    for (int i = static_cast<int>(shape_.size()) - 2; i >= 0; --i) {
+        strides_[i] = strides_[i + 1] * shape_[i + 1];
+    }
+}
+
+//
+//CONSTRUCTOR PRINCIPAL
+//
+
+
+Tensor::Tensor(const std::vector<std::size_t>& shape, const std::vector<double>& values)
+    : shape_(shape) {
+
+    validate_shape_or_throw(shape_);
+    size_ = product(shape_);
+
+    if (values.size() != size_) {
+        throw std::invalid_argument("Tensor: values size does not match shape product");
+    }
+
+    compute_strides();
+
+    data_ = new double[size_];
+    std::copy(values.begin(), values.end(), data_);
+}
+
+
+//
+// DESTRUCTOR
+//
+
+Tensor::~Tensor() {
+    delete[] data_;
+}
+
+Tensor::Tensor(const Tensor& other)
+    : shape_(other.shape_),
+      strides_(other.strides_),
+      size_(other.size_) {
+
+    data_ = new double[size_];
+    std::copy(other.data_, other.data_ + size_, data_);
+}
+
+Tensor& Tensor::operator=(const Tensor& other) {
+    if (this == &other) return *this;
+
+    delete[] data_;
+
+    shape_ = other.shape_;
+    strides_ = other.strides_;
+    size_ = other.size_;
+
+    data_ = new double[size_];
+    std::copy(other.data_, other.data_ + size_, data_);
+
+    return *this;
+}
+
+Tensor::Tensor(Tensor&& other) noexcept
+    : shape_(std::move(other.shape_)),
+      strides_(std::move(other.strides_)),
+      size_(other.size_),
+      data_(other.data_) {
+
+    other.size_ = 0;
+    other.data_ = nullptr;
+}
+
+Tensor& Tensor::operator=(Tensor&& other) noexcept {
+    if (this == &other) return *this;
+
+    delete[] data_;
+
+    shape_ = std::move(other.shape_);
+    strides_ = std::move(other.strides_);
+    size_ = other.size_;
+    data_ = other.data_;
+
+    other.size_ = 0;
+    other.data_ = nullptr;
+
+    return *this;
+}
+
+std::size_t Tensor::offset(std::size_t i) const {
+    if (shape_.size() != 1) {
+        throw std::invalid_argument("Tensor: expected 1D");
+    }
+    if (i >= shape_[0]) {
+        throw std::out_of_range("Tensor: index out of range");
+    }
+    return i;
+}
+
+std::size_t Tensor::offset(std::size_t i, std::size_t j) const {
+    if (shape_.size() != 2) {
+        throw std::invalid_argument("Tensor: expected 2D");
+    }
+    if (i >= shape_[0] || j >= shape_[1]) {
+        throw std::out_of_range("Tensor: index out of range");
+    }
+    return i * strides_[0] + j * strides_[1];
+}
+
+std::size_t Tensor::offset(std::size_t i, std::size_t j, std::size_t k) const {
+    if (shape_.size() != 3) {
+        throw std::invalid_argument("Tensor: expected 3D");
+    }
+    if (i >= shape_[0] || j >= shape_[1] || k >= shape_[2]) {
+        throw std::out_of_range("Tensor: index out of range");
+    }
+    return i * strides_[0] + j * strides_[1] + k * strides_[2];
+}
+
+double& Tensor::at(std::size_t i) {
+    return data_[offset(i)];
+}
+
+double& Tensor::at(std::size_t i, std::size_t j) {
+    return data_[offset(i, j)];
+}
+
+double& Tensor::at(std::size_t i, std::size_t j, std::size_t k) {
+    return data_[offset(i, j, k)];
+}
+
+const double& Tensor::at(std::size_t i) const {
+    return data_[offset(i)];
+}
+
+const double& Tensor::at(std::size_t i, std::size_t j) const {
+    return data_[offset(i, j)];
+}
+
+const double& Tensor::at(std::size_t i, std::size_t j, std::size_t k) const {
+    return data_[offset(i, j, k)];
+}
+
+
+//
+//Impresion de TENSORES
+//
+
+void Tensor::imprimir() const {
+    if (dims() == 1) {
+        for (std::size_t i = 0; i < shape_[0]; ++i) {
+            std::cout << at(i) << " ";
+        }
+        std::cout << "\n";
+    } else if (dims() == 2) {
+        for (std::size_t i = 0; i < shape_[0]; ++i) {
+            for (std::size_t j = 0; j < shape_[1]; ++j) {
+                std::cout << at(i, j) << " ";
+            }
+            std::cout << "\n";
+        }
+    } else if (dims() == 3) {
+        for (std::size_t i = 0; i < shape_[0]; ++i) {
+            std::cout << "Slice i=" << i << ":\n";
+            for (std::size_t j = 0; j < shape_[1]; ++j) {
+                for (std::size_t k = 0; k < shape_[2]; ++k) {
+                    std::cout << at(i, j, k) << " ";
+                }
+                std::cout << "\n";
+            }
+            std::cout << "\n";
+        }
+    }
+}
