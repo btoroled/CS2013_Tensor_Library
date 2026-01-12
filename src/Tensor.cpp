@@ -43,6 +43,7 @@ void Tensor::compute_strides() {
     }
 }
 
+
 //
 //CONSTRUCTOR PRINCIPAL
 //

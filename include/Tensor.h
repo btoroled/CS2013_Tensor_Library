@@ -63,6 +63,7 @@ public:
     static Tensor random(const std::vector<std::size_t>& shape, double min, double max);
     static Tensor arange(long long start, long long end);
 
+
     //
     //Sobrecarga de operadores
     //
