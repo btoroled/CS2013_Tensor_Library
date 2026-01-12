@@ -59,7 +59,9 @@ Tensor::Tensor(const std::vector<std::size_t>& shape, const std::vector<double>&
     compute_strides();
 
     data_ = new double[size_];
-    std::copy(values.begin(), values.end(), data_);
+    for (std::size_t i = 0; i < size_; ++i)
+        data_[i] = values[i];
+
 }
 
 //
@@ -245,7 +247,8 @@ Tensor Tensor::arange(long long start, long long end) {
 
     std::size_t n =(std::size_t)(end-start);
     Tensor t;
-    t.shape_ = { n };
+    t.shape_.clear();
+    t.shape_.push_back(n);
     t.validate_shape_or_throw(t.shape_);
     t.size_ = n;
     t.compute_strides();
