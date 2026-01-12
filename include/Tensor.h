@@ -63,6 +63,8 @@ public:
     static Tensor random(const std::vector<std::size_t>& shape, double min, double max);
     static Tensor arange(long long start, long long end);
 
+    Tensor view(const std::vector<std::size_t>& new_shape);
+    Tensor unsqueeze(std::size_t dim);
 
     //
     //Sobrecarga de operadores
@@ -72,6 +74,7 @@ public:
     Tensor operator-(const Tensor& other) const;
     Tensor operator*(const Tensor& other) const;
     Tensor operator*(double scalar) const;
+
 
 };
 

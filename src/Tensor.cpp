@@ -513,7 +513,58 @@ void Tensor::imprimir() const {
             std::cout << "\n";
         }
     }
+}
 
+Tensor Tensor::view(const std::vector<std::size_t> &new_shape) {
+    validate_shape_or_throw(new_shape);
+    std::size_t new_size = product(new_shape);
+    if (new_size != size_) {
+        throw std::invalid_argument("Tensor::view: product(new_shape) must match current numel()");
+    }
 
+    Tensor out;
+    out.shape_ = new_shape;
+    out.size_ = size_;
+    out.compute_strides();
+    out.data_ = data_;
+    data_ = nullptr;
+    size_ = 0;
+    shape_.clear();
+    strides_.clear();
 
+    return out;
+}
+
+Tensor Tensor::unsqueeze(std::size_t dim) {
+    std::size_t old_dims = dims();
+    if (dim > old_dims) {
+        throw std::invalid_argument("Tensor::unsqueeze: dim out of range");
+    }
+    if (old_dims + 1 > 3) {
+        throw std::invalid_argument("Tensor::unsqueeze: dims cannot exceed 3");
+    }
+
+    std::vector<std::size_t> new_shape;
+    new_shape.reserve(old_dims + 1);
+    for (std::size_t i = 0; i < old_dims + 1; ++i) {
+        if (i == dim) new_shape.push_back(1);
+        else {
+            std::size_t old_i = (i < dim) ? i : (i - 1);
+            new_shape.push_back(shape_[old_i]);
+        }
+    }
+
+    validate_shape_or_throw(new_shape);
+
+    Tensor out;
+    out.shape_ = new_shape;
+    out.size_ = size_;
+    out.compute_strides();
+    out.data_ = data_;
+    data_ = nullptr;
+    size_ = 0;
+    shape_.clear();
+    strides_.clear();
+
+    return out;
 }
