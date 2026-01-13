@@ -37,4 +37,27 @@ project/
     Tensor.cpp
   main.cpp (o tests.cpp)
   CMakeLists.txt (opcional)
+```
+## 4. Cómo agregar la librería a tu proyecto
+4.1 Opción A: Usando CMake (recomendado)
 
+4.1.1Copia los archivos a la estructura mostrada en la sección 3.
+
+4.1.2Usa un CMakeLists.txt como el siguiente:
+<code>
+cmake_minimum_required(VERSION 3.16)
+project(TensorLibDemo CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+add_library(tensorlib
+    src/Tensor.cpp
+)
+
+target_include_directories(tensorlib PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+add_executable(demo main.cpp)
+target_link_libraries(demo PRIVATE tensorlib) </code>
