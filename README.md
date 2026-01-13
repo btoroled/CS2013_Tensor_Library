@@ -9,6 +9,103 @@
 Esta librería implementa un tensor de hasta **3 dimensiones** usando memoria contigua (`double*`).  
 Incluye construcción segura, **Regla de 5** (copia y movimiento), acceso con validación, creadores, operaciones element-wise con **broadcast básico**, cambios de forma **sin copia (move)**, concatenación, funciones `friend` y un pequeño sistema de transformaciones (polimorfismo).
 
+## Quick Start
+
+Requisitos
+- Compilador C++ con soporte para C++17 (g++ >= 7, clang >= 6, MSVC con soporte C++17).
+- CMake (opcional, recomendado) >= 3.16 si quieres usar el ejemplo de CMake.
+- (Opcional) GoogleTest / Catch2 para pruebas unitarias si vas a añadir tests.
+
+1) Clona el repositorio (si no lo has hecho todavía)
+```bash
+git clone https://github.com/btoroled/CS2013_Tensor_Library.git
+cd CS2013_Tensor_Library
+```
+
+2) Estructura recomendada (si estás evaluando localmente)
+```
+project/
+  include/
+    Tensor.h
+    TensorTransform.h
+  src/
+    Tensor.cpp
+  examples/
+    main.cpp
+  CMakeLists.txt
+```
+
+3) Compilar con CMake (recomendado)
+```bash
+mkdir -p build
+cd build
+cmake ..
+cmake --build . --config Release
+# Ejecutar el binario (si CMake produjo 'demo' u otro nombre)
+./demo
+```
+
+4) Compilar directamente con g++ (sin CMake)
+```bash
+g++ -std=c++17 -O2 -Wall -Iinclude examples/main.cpp src/Tensor.cpp -o demo
+./demo
+```
+
+5) Ejemplo mínimo de uso (pégalo en `examples/main.cpp`)
+```cpp
+#include <iostream>
+#include <vector>
+#include "Tensor.h"           // suponiendo include path correcto
+#include "TensorTransform.h"
+
+int main() {
+  // reproducibilidad (si usas rand())
+  srand(42);
+
+  // shape 2x3
+  std::vector<std::size_t> s = {2, 3};
+  Tensor A = Tensor::ones(s);
+  std::vector<double> vals = {1,2,3,4,5,6};
+  Tensor B(s, vals);  // construye desde std::vector<double>
+
+  // operaciones element-wise y broadcast
+  Tensor C = A + B;   // suma
+  C.imprimir();       // imprime shape y algunos valores
+
+  // reshape (view) sin copia: transferirá la propiedad del buffer
+  Tensor V = C.view({3,2});
+  V.imprimir();
+
+  // matmul ejemplo (2x3) * (3x2) -> (2x2)
+  Tensor X = Tensor::ones({2,3});
+  Tensor Y = Tensor::ones({3,2});
+  Tensor Z = matmul(X, Y);
+  Z.imprimir();
+
+  // apply con ReLU
+  ReLU relu;
+  Tensor R = Z.apply(relu);
+  R.imprimir();
+
+  return 0;
+}
+```
+
+6) Recomendaciones rápidas
+- Para depuración activa compila con `-O0 -g -Wall` y usa `imprimir()` para ver shapes/valores parciales.
+- Evita `view()` en producción si no quieres transferir ownership; documenta claramente quién es responsable del buffer.
+- Para operaciones grandes usa `-O2` o `-O3` y mide memoria/tiempo si necesitas optimizar.
+- Añade un archivo `LICENSE` con la licencia MIT y un `CONTRIBUTING.md` si aceptas contribuciones.
+
+7) Próximos pasos sugeridos
+- Añadir un `examples/` con varios demos (broadcast, concat, matmul, pipeline simple).
+- Integrar un CI (GitHub Actions) que compile y ejecute ejemplos/tests en cada push/PR.
+- Añadir tests unitarios (GoogleTest/Catch2) y un `tests/` con CMake.
+
+---
+
+Si quieres, aplico estas secciones directamente al archivo `README.md` del repo y/o creo los archivos auxiliares (`LICENSE`, `examples/main.cpp`, `CMakeLists.txt`) listos para commitear. ¿Qué prefieres que haga ahora?
+
 ---
 
 ## 2. Características
