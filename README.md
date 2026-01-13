@@ -125,7 +125,7 @@ double& at(size_t i, size_t j, size_t k);
 
 ### 5.4 Creadores estáticos
 
-Devuelven un `Tensor` por valor (NRVO/move). No se usan `initializer_list` en la API pública si no se desea.
+Devuelven un `Tensor` por valor (NRVO/move).
 
 ```cpp
 static Tensor zeros (const std::vector<size_t>& shape);
@@ -201,7 +201,7 @@ Tensor apply(const TensorTransform& op) const;
 
 ---
 
-## 7. Ejemplos de uso (sin `initializer_list`)
+## 7. Ejemplos de uso
 
 ### 7.1 Construcción de `shape` con `push_back`
 
